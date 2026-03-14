@@ -18,6 +18,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 
+/* ── demo data (unchanged) ── */
 const demoTasks = [
   {
     id: 1,
@@ -32,7 +33,7 @@ const demoTasks = [
     id: 2,
     task: "Team standup",
     description: "",
-    dueDate: new Date(), // TODAY
+    dueDate: new Date(),
     priority: 4,
     completed: true,
     project: "work",
@@ -79,14 +80,12 @@ const projects = [
   { id: "work", label: "Work" },
   { id: "personal", label: "Personal" },
 ];
-
 const STORAGE_KEY = "planstack_tasks";
 
 const getStoredTasks = () => {
   try {
     const data = localStorage.getItem(STORAGE_KEY);
     if (!data) return [];
-
     return JSON.parse(data).map((t) => ({
       ...t,
       dueDate: t.dueDate ? new Date(t.dueDate) : null,
@@ -98,128 +97,123 @@ const getStoredTasks = () => {
 };
 
 const saveTasksToStorage = (tasks) => {
-  const serializable = tasks.map((t) => ({
-    ...t,
-    dueDate: t.dueDate ? new Date(t.dueDate).toISOString() : null,
-  }));
+  localStorage.setItem(
+    STORAGE_KEY,
+    JSON.stringify(
+      tasks.map((t) => ({
+        ...t,
+        dueDate: t.dueDate ? new Date(t.dueDate).toISOString() : null,
+      })),
+    ),
+  );
+};
 
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(serializable));
+/* ── priority metadata (unchanged) ── */
+const PM = {
+  1: {
+    label: "Urgent",
+    dot: "#b5451b",
+    chip: "rgba(181,69,27,0.1)",
+    text: "#b5451b",
+  },
+  2: {
+    label: "High",
+    dot: "#a07c1e",
+    chip: "rgba(160,124,30,0.1)",
+    text: "#a07c1e",
+  },
+  3: {
+    label: "Medium",
+    dot: "#2e6b8a",
+    chip: "rgba(46,107,138,0.1)",
+    text: "#2e6b8a",
+  },
+  4: {
+    label: "Low",
+    dot: "#8a9a8e",
+    chip: "rgba(138,154,142,0.1)",
+    text: "#8a9a8e",
+  },
 };
 
 export default function Dashboard() {
-  const isSameCalendarDay = (date1, date2) => {
-    if (!date1 || !date2) return false;
-
-    const d1 = new Date(date1);
-    const d2 = new Date(date2);
-
+  /* ── helpers (unchanged) ── */
+  const isSameCalendarDay = (d1, d2) => {
+    if (!d1 || !d2) return false;
+    const a = new Date(d1),
+      b = new Date(d2);
     return (
-      d1.getFullYear() === d2.getFullYear() &&
-      d1.getMonth() === d2.getMonth() &&
-      d1.getDate() === d2.getDate()
+      a.getFullYear() === b.getFullYear() &&
+      a.getMonth() === b.getMonth() &&
+      a.getDate() === b.getDate()
     );
   };
-
   const formatDueDate = (date) => {
     if (!date) return "";
-
-    const today = new Date();
-
-    if (isSameCalendarDay(date, today)) return "Today";
-
+    if (isSameCalendarDay(date, new Date())) return "Today";
     return new Date(date).toLocaleDateString("en-IN", {
       day: "numeric",
       month: "short",
     });
   };
-  // --- UI States ---
+
+  /* ── state (unchanged) ── */
   const [isDisplayPanelOpen, setIsDisplayPanelOpen] = useState(false);
   const [viewMode, setViewMode] = useState("list");
   const [isAdding, setIsAdding] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState(null);
-
-  // --- Task Form States ---
   const [tasks, setTasks] = useState(getStoredTasks);
   const [taskInput, setTaskInput] = useState("");
   const [descInput, setDescInput] = useState("");
   const [dueDate, setDueDate] = useState(null);
   const [priority, setPriority] = useState(null);
   const [project, setProject] = useState(null);
-
-  // --- Popup States ---
   const [activePopup, setActivePopup] = useState(null);
   const [currentCalendarDate, setCurrentCalendarDate] = useState(new Date());
-
   const [activeFilter, setActiveFilter] = useState("all");
 
   const priorities = [
-    { id: 1, label: "Priority 1", color: "text-red-500" },
-    { id: 2, label: "Priority 2", color: "text-orange-500" },
-    { id: 3, label: "Priority 3", color: "text-blue-500" },
-    { id: 4, label: "Priority 4", color: "text-neutral-400" },
+    { id: 1, label: "Priority 1" },
+    { id: 2, label: "Priority 2" },
+    { id: 3, label: "Priority 3" },
+    { id: 4, label: "Priority 4" },
   ];
 
+  /* ── derived (unchanged) ── */
   const filteredTasks = tasks?.filter((task) => {
     const now = new Date();
     now.setHours(0, 0, 0, 0);
-
-    if (activeFilter === "all") {
-      return task;
-    }
-
-    if (activeFilter === "completed") {
-      return task.completed;
-    }
-
-    if (activeFilter === "incomplete") {
-      return !task.completed;
-    }
-
-    if (activeFilter === "today") {
+    if (activeFilter === "all") return task;
+    if (activeFilter === "completed") return task.completed;
+    if (activeFilter === "incomplete") return !task.completed;
+    if (activeFilter === "today")
       return !task.completed && isSameCalendarDay(task.dueDate, now);
-    }
-
     if (activeFilter === "upcoming") {
       if (!task.completed && task.dueDate) {
-        const due = new Date(task.dueDate);
-        due.setHours(0, 0, 0, 0);
-
-        return due > now; // 🔥 ONLY future dates
+        const d = new Date(task.dueDate);
+        d.setHours(0, 0, 0, 0);
+        return d > now;
       }
       return false;
     }
-
-    if (activeFilter === "work") {
-      return task.project === "work";
-    }
-
-    if (activeFilter === "personal") {
-      return task.project === "personal";
-    }
-
+    if (activeFilter === "work") return task.project === "work";
+    if (activeFilter === "personal") return task.project === "personal";
     return true;
   });
 
   const todayTasks = tasks?.filter(
     (t) => isSameCalendarDay(t.dueDate, new Date()) && !t.completed,
   ).length;
-
   const completedToday = tasks?.filter(
     (t) => isSameCalendarDay(t.dueDate, new Date()) && t.completed,
   ).length;
 
-  const getEmptyMessage = () => {
-    switch (activeFilter) {
-      case "today":
-        return "No tasks for today";
-      case "upcoming":
-        return "No upcoming tasks";
-      case "completed":
-        return "No completed tasks";
-      default:
-        return "No items found";
-    }
-  };
+  const getEmptyMessage = () =>
+    ({
+      today: "Nothing scheduled for today",
+      upcoming: "No upcoming tasks",
+      completed: "No completed tasks",
+    })[activeFilter] ?? "No tasks found";
 
   const closeForm = () => {
     setIsAdding(false);
@@ -230,47 +224,6 @@ export default function Dashboard() {
     setActivePopup(null);
     setProject(null);
   };
-
-  const handleAddTask = () => {
-    const existing = getStoredTasks();
-
-    let updated;
-
-    if (editingTaskId) {
-      // ⭐ UPDATE EXISTING TASK
-      updated = existing.map((t) =>
-        t.id === editingTaskId
-          ? {
-              ...t,
-              task: taskInput,
-              description: descInput,
-              dueDate: dueDate ? new Date(dueDate) : null,
-              priority: priority || 4,
-              project: project,
-            }
-          : t,
-      );
-    } else {
-      // ⭐ CREATE NEW TASK
-      const newTask = {
-        id: Date.now(),
-        task: taskInput,
-        description: descInput,
-        dueDate: dueDate ? new Date(dueDate) : null,
-        priority: priority || 4,
-        project: project,
-        completed: false,
-      };
-
-      updated = [...existing, newTask];
-    }
-
-    saveTasksToStorage(updated);
-    setTasks(updated);
-    setEditingTaskId(null);
-    resetForm();
-  };
-
   const resetForm = () => {
     setTaskInput("");
     setDescInput("");
@@ -281,69 +234,87 @@ export default function Dashboard() {
     setProject(null);
   };
 
+  const handleAddTask = () => {
+    const existing = getStoredTasks();
+    const updated = editingTaskId
+      ? existing.map((t) =>
+          t.id === editingTaskId
+            ? {
+                ...t,
+                task: taskInput,
+                description: descInput,
+                dueDate: dueDate ? new Date(dueDate) : null,
+                priority: priority || 4,
+                project,
+              }
+            : t,
+        )
+      : [
+          ...existing,
+          {
+            id: Date.now(),
+            task: taskInput,
+            description: descInput,
+            dueDate: dueDate ? new Date(dueDate) : null,
+            priority: priority || 4,
+            project,
+            completed: false,
+          },
+        ];
+    saveTasksToStorage(updated);
+    setTasks(updated);
+    setEditingTaskId(null);
+    resetForm();
+  };
+
   const toggleComplete = (id) => {
     const existing = getStoredTasks();
-
     const updated = existing.map((t) =>
       t.id === id ? { ...t, completed: !t.completed } : t,
     );
-
-    saveTasksToStorage(updated); // 🔥 WRITE
-    setTasks(updated); // 🔥 REFRESH
+    saveTasksToStorage(updated);
+    setTasks(updated);
   };
 
   const renderCalendarDays = () => {
-    const year = currentCalendarDate.getFullYear();
-    const month = currentCalendarDate.getMonth();
-
-    const firstDay = new Date(year, month, 1).getDay();
-    const offset = firstDay === 0 ? 6 : firstDay - 1;
-
+    const year = currentCalendarDate.getFullYear(),
+      month = currentCalendarDate.getMonth();
+    const offset = (() => {
+      const f = new Date(year, month, 1).getDay();
+      return f === 0 ? 6 : f - 1;
+    })();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
-
     const today = new Date();
-    today.setHours(0, 0, 0, 0); // 🔥 normalize today (important)
-
+    today.setHours(0, 0, 0, 0);
     const todayStr = today.toDateString();
-
     const days = [];
-
-    // blank offsets
-    for (let i = 0; i < offset; i++) {
-      days.push(<div key={`blank-${i}`} />);
-    }
-
+    for (let i = 0; i < offset; i++) days.push(<div key={`b-${i}`} />);
     for (let d = 1; d <= daysInMonth; d++) {
       const dateObj = new Date(year, month, d);
       dateObj.setHours(0, 0, 0, 0);
-
       const isToday = todayStr === dateObj.toDateString();
-      const isPast = dateObj < today; // 🔥 disable logic
-
+      const isPast = dateObj < today;
       days.push(
         <div
           key={d}
-          className={`text-[11px] p-1.5 rounded-full text-center transition-colors
-          ${
-            isPast
-              ? "text-neutral-600 cursor-not-allowed opacity-40"
-              : "cursor-pointer hover:bg-cyan-400 hover:text-black text-white"
-          }
-          ${isToday ? "bg-red-500 text-white" : ""}
-        `}
           onClick={() => {
-            if (isPast) return; // 🔥 block selection
-
-            const selectedDate = new Date(year, month, d);
-            setDueDate(selectedDate);
+            if (isPast) return;
+            setDueDate(new Date(year, month, d));
             setActivePopup(null);
           }}
+          className={[
+            "text-[11px] py-1.5 px-1 rounded-full text-center transition-colors select-none",
+            isPast
+              ? "opacity-30 cursor-not-allowed text-[#999]"
+              : "cursor-pointer",
+            isToday ? "bg-[#2d5a3d] text-white! font-semibold" : "",
+            !isPast && !isToday ? "text-[#2c3a2f] hover:bg-[#2d5a3d]/10" : "",
+          ].join(" ")}
         >
           {d}
         </div>,
       );
     }
-
     return days;
   };
 
@@ -353,514 +324,564 @@ export default function Dashboard() {
     setDueDate(task.dueDate || null);
     setPriority(task.priority || null);
     setProject(task.project || null);
-
-    setEditingTaskId(task.id); // ⭐ remember which task is editing
+    setEditingTaskId(task.id);
     setIsAdding(true);
   };
-
   const handleDeleteTask = (id) => {
-    const existing = getStoredTasks();
-
-    const updated = existing.filter((t) => t.id !== id);
-
-    saveTasksToStorage(updated); // 🔥 WRITE
-    setTasks(updated); // 🔥 REFRESH UI
+    const existing = getStoredTasks(),
+      updated = existing.filter((t) => t.id !== id);
+    saveTasksToStorage(updated);
+    setTasks(updated);
   };
 
+  const filterLabel =
+    {
+      all: "All Tasks",
+      today: "Today",
+      upcoming: "Upcoming",
+      completed: "Completed",
+      incomplete: "Incomplete",
+      work: "Work",
+      personal: "Personal",
+    }[activeFilter] ?? "Tasks";
+
   return (
-    <div className="bg-black min-h-screen text-white font-sans antialiased">
-      <div className="flex h-screen overflow-hidden">
-        {/* ===== SIDEBAR ===== */}
-        <aside className="w-[270px] bg-[#0a0a0a] p-6 border-r border-[#1a1a1a] flex flex-col gap-5">
-          <div className="flex items-center gap-2.5 mb-2">
-            <div className="bg-cyan-400 text-black w-8 h-8 rounded-lg flex items-center justify-center font-black">
-              <Check size={18} strokeWidth={3} />
-            </div>
-            <span className="text-lg font-bold tracking-tight">PlanStack</span>
-          </div>
+    <>
+      {/* minimal <style> — only font import + pseudo-selectors Tailwind can't express */}
+      <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=DM+Sans:wght@300;400;500&display=swap');
+        .font-serif-ps { font-family: 'Instrument Serif', serif; }
+        .font-sans-ps  { font-family: 'DM Sans', sans-serif; }
+        .ps-scroll::-webkit-scrollbar       { width: 3px; }
+        .ps-scroll::-webkit-scrollbar-thumb { background: #cfd8d1; border-radius: 99px; }
+        .ps-input::placeholder { color: #8a9a8e; }
+        .ps-input:focus        { border-color: #2d5a3d; box-shadow: 0 0 0 3px rgba(45,90,61,0.1); }
+      `}</style>
 
-          <button
-            className="bg-cyan-400 text-black py-3 px-4 rounded-lg text-[15px] font-semibold flex items-center justify-center gap-2 hover:bg-cyan-500 transition-all w-full"
-            onClick={() => setIsAdding(true)}
-          >
-            <Plus size={18} strokeWidth={2.5} /> Add Task
-          </button>
-
-          <nav className="flex flex-col gap-1">
-            <NavItem
-              active={activeFilter === "all"}
-              icon={<Clock size={18} />}
-              label="All"
-              onClick={() => setActiveFilter("all")}
-            />
-
-            <NavItem
-              active={activeFilter === "today"}
-              icon={<Calendar size={18} />}
-              label="Today"
-              badge={
-                tasks.filter(
-                  (t) =>
-                    !t.completed && isSameCalendarDay(t.dueDate, new Date()),
-                ).length
-              }
-              onClick={() => setActiveFilter("today")}
-            />
-
-            <NavItem
-              active={activeFilter === "upcoming"}
-              icon={<Clock size={18} />}
-              label="Upcoming"
-              onClick={() => setActiveFilter("upcoming")}
-            />
-
-            <NavItem
-              active={activeFilter === "completed"}
-              icon={<CheckCircle2 size={18} />}
-              label="Completed"
-              onClick={() => setActiveFilter("completed")}
-            />
-
-            <NavItem
-              active={activeFilter === "incomplete"}
-              icon={<AlertCircle size={18} />}
-              label="Incomplete"
-              onClick={() => setActiveFilter("incomplete")}
-            />
-          </nav>
-
-          <div className="mt-4">
-            <h4 className="text-[11px] font-bold text-[#525252] tracking-wider mb-3 px-3 uppercase">
-              Projects
-            </h4>
-            <ProjectItem
-              active={activeFilter === "work"}
-              icon={<Folder size={16} />}
-              label="Work"
-              count={tasks?.filter((t) => t.project === "work").length}
-              onClick={() => setActiveFilter("work")}
-            />
-
-            <ProjectItem
-              active={activeFilter === "personal"}
-              icon={<Folder size={16} />}
-              label="Personal"
-              count={tasks?.filter((t) => t.project === "personal").length}
-              onClick={() => setActiveFilter("personal")}
-            />
-          </div>
-        </aside>
-
-        {/* ===== MAIN CONTENT ===== */}
-        <main className="flex-1 p-8 md:px-12 overflow-y-auto bg-black">
-          <div className="flex justify-between items-start mb-8">
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight">Today</h1>
-              <p className="flex items-center gap-1.5 text-[#737373] text-sm font-medium mt-2">
-                <Target size={14} className="text-cyan-400" />
-                {todayTasks} tasks today · {completedToday} completed
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              <button
-                className="flex items-center gap-2 border border-cyan-400 bg-cyan-400 text-black py-2.5 px-4 rounded-lg text-sm font-semibold hover:bg-cyan-500 transition-all"
-                onClick={() => setIsAdding(true)}
-              >
-                <Plus size={20} /> Add task
-              </button>
-              <button
-                className="flex items-center gap-2 bg-transparent border border-cyan-400 text-cyan-400 py-2.5 px-4 rounded-lg text-sm font-semibold hover:bg-cyan-400/10 transition-all"
-                onClick={() => setIsDisplayPanelOpen(!isDisplayPanelOpen)}
-              >
-                <List size={18} /> Display
-              </button>
-            </div>
-          </div>
-
-          <div
-            className={`flex flex-col ${viewMode === "board" ? "gap-3 mt-4" : "gap-0"}`}
-          >
-            {/*  TASK EXAMPLE */}
-            {filteredTasks.length === 0 ? (
-              <div className="py-2 text-sm text-[#737373]">
-                {getEmptyMessage()}
+      <div className="font-sans-ps bg-[#f3f5f2] text-[#1c2b20] min-h-screen">
+        <div className="flex h-screen overflow-hidden">
+          {/* ═══ SIDEBAR ═══ */}
+          <aside className="w-63 shrink-0 flex flex-col bg-[#e8ede9] border-r border-[#2d5a3d]/10 px-3.5 py-5 overflow-y-auto ps-scroll">
+            {/* logo */}
+            <div className="flex items-center gap-2.5 mb-5">
+              <div className="w-7.5 h-7.5 rounded-lg flex items-center justify-center bg-[#2d5a3d] text-white shrink-0">
+                <Check size={15} strokeWidth={3} />
               </div>
-            ) : (
-              filteredTasks.map((task) => (
-                <div
-                  key={task.id}
-                  className={`flex items-start gap-4 p-5 rounded-xl transition-all cursor-pointer group ${
-                    viewMode === "board"
-                      ? "bg-[#0f0f0f] border border-[#1f1f1f] shadow-lg hover:-translate-y-0.5"
-                      : "border-b border-[#1a1a1a] hover:bg-white/5"
-                  }`}
-                >
-                  {/* Checkbox */}
-                  <button
-                    onClick={() => toggleComplete(task.id)}
-                    className={`mt-1 w-5 h-5 rounded-md border-2 flex items-center justify-center transition-all ${
-                      task.completed
-                        ? "bg-cyan-400 border-cyan-400"
-                        : "border-neutral-700 hover:border-neutral-500"
-                    }`}
+              <span className="font-serif-ps text-[22px] text-[#1c2b20] tracking-[0.01em]">
+                PlanStack
+              </span>
+            </div>
+
+            {/* add button */}
+            <button
+              className={`addBtn w-full mb-4.5`}
+              onClick={() => setIsAdding(true)}
+            >
+              <Plus size={15} strokeWidth={2.5} /> Add Task
+            </button>
+
+            {/* nav items */}
+            <div className="flex flex-col gap-0.5">
+              {[
+                { id: "all", icon: <Clock size={14} />, label: "All Tasks" },
+                {
+                  id: "today",
+                  icon: <Calendar size={14} />,
+                  label: "Today",
+                  badge: tasks.filter(
+                    (t) =>
+                      !t.completed && isSameCalendarDay(t.dueDate, new Date()),
+                  ).length,
+                },
+                {
+                  id: "upcoming",
+                  icon: <Clock size={14} />,
+                  label: "Upcoming",
+                },
+                {
+                  id: "completed",
+                  icon: <CheckCircle2 size={14} />,
+                  label: "Completed",
+                },
+                {
+                  id: "incomplete",
+                  icon: <AlertCircle size={14} />,
+                  label: "Incomplete",
+                },
+              ].map(({ id, icon, label, badge }) => {
+                const on = activeFilter === id;
+                return (
+                  <div
+                    key={id}
+                    onClick={() => setActiveFilter(id)}
+                    className={`navBase ${on ? "bg-[#2d5a3d] text-white" : "text-[#4a5e4f] hover:bg-[#dde4de] hover:text-[#1c2b20]"}`}
                   >
-                    {task.completed && (
-                      <Check size={14} className="text-black stroke-[3px]" />
-                    )}
-                  </button>
-
-                  {/* Content */}
-                  <div className="flex-1 flex flex-col gap-2">
-                    <div
-                      className={`text-[15px] font-medium leading-relaxed ${
-                        task.completed ? "line-through text-neutral-500" : ""
-                      }`}
-                    >
-                      {task.task}
-                    </div>
-
-                    <div className="flex items-center gap-4 text-[13px] text-[#737373]">
-                      {task.dueDate && (
-                        <span className="flex items-center gap-1.5 text-cyan-400">
-                          <Clock size={14} /> {formatDueDate(task.dueDate)}
-                        </span>
-                      )}
-
-                      {task.priority && (
-                        <span className="flex items-center gap-1.5">
-                          🚩 P{task.priority}
-                        </span>
-                      )}
-
-                      {task.project && (
-                        <span className="flex items-center gap-1.5">
-                          <Folder size={14} /> {task.project}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Actions (Edit / Delete) */}
-                  {/* Actions (Edit / Delete) */}
-                  <div className="flex items-center gap-2 ml-2">
-                    <button
-                      onClick={() => handleEditTask(task)}
-                      className="p-1.5 rounded-md bg-green-400/10 text-green-300 hover:bg-green-400/20 transition"
-                      title="Edit task"
-                    >
-                      <Pencil size={16} />
-                    </button>
-
-                    <button
-                      onClick={() => handleDeleteTask(task.id)}
-                      className="p-1.5 rounded-md bg-red-500/10 text-red-400 hover:bg-red-500/20 transition"
-                      title="Delete task"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                </div>
-              ))
-            )}
-
-            {/* QUICK ADD SECTION */}
-            <div className="mt-4 relative">
-              {isAdding && (
-                <>
-                  {" "}
-                  <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[998]" />
-                  <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[#181818] border border-[#262626] rounded-xl p-4 max-w-[500px] w-[92%] shadow-2xl z-[999]">
-                    <div className="flex justify-between text-[12px] font-bold text-[#a3a3a3] mb-3">
-                      <span>Quick Add Task</span>
-                      <button
-                        className="hover:text-white"
-                        onClick={() => setIsAdding(false)}
+                    <span className={on ? "text-white" : "text-[#8a9a8e]"}>
+                      {icon}
+                    </span>
+                    <span className="flex-1">{label}</span>
+                    {badge > 0 && (
+                      <span
+                        className={`text-[10px] font-bold px-1.75 py-px rounded-full text-white ${on ? "bg-white/25" : "bg-[#2d5a3d]"}`}
                       >
-                        <X size={18} />
-                      </button>
-                    </div>
+                        {badge}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
 
-                    <div className="flex flex-col gap-2">
-                      <input
-                        className="w-full bg-[#242424] border border-[#333] rounded-lg p-2 text-sm text-white focus:border-cyan-400 outline-none"
-                        type="text"
-                        placeholder="What needs to be done?"
-                        value={taskInput}
-                        onChange={(e) => setTaskInput(e.target.value)}
-                        autoFocus
-                      />
-                      <input
-                        className="w-full bg-[#242424] border border-[#333] rounded-lg p-2 text-[12px] text-[#a3a3a3] focus:border-cyan-400 outline-none"
-                        type="text"
-                        placeholder="Description (optional)"
-                        value={descInput}
-                        onChange={(e) => setDescInput(e.target.value)}
-                      />
-                    </div>
+            {/* divider */}
+            <div className="h-px bg-[#2d5a3d]/10 my-3.5" />
 
-                    <div className="flex gap-2 mt-2">
-                      {dueDate && (
-                        <div className="bg-orange-500/10 text-orange-200 border border-orange-500/20 px-2 py-0.5 rounded text-[11px] flex items-center gap-1">
-                          <Calendar size={10} /> {formatDueDate(dueDate)}
-                        </div>
-                      )}
-                      {priority && (
-                        <div className="bg-cyan-400/10 text-cyan-200 border border-cyan-400/20 px-2 py-0.5 rounded text-[11px] flex items-center gap-1">
-                          <Flag size={10} /> P{priority}
-                        </div>
-                      )}
-                      {project && (
-                        <div className="bg-purple-500/10 text-purple-200 border border-purple-500/20 px-2 py-0.5 rounded text-[11px] flex items-center gap-1">
-                          <Folder size={10} /> {project}
-                        </div>
-                      )}
-                    </div>
+            {/* projects */}
+            <p className="secLabel">Projects</p>
+            {[
+              { id: "work", label: "Work" },
+              { id: "personal", label: "Personal" },
+            ].map(({ id, label }) => {
+              const on = activeFilter === id;
+              return (
+                <div
+                  key={id}
+                  onClick={() => setActiveFilter(id)}
+                  className={`navBase ${on ? "bg-[#2d5a3d] text-white" : "text-[#4a5e4f] hover:bg-[#dde4de] hover:text-[#1c2b20]"}`}
+                >
+                  <span className={on ? "text-white" : "text-[#8a9a8e]"}>
+                    <Folder size={14} />
+                  </span>
+                  <span className="flex-1">{label}</span>
+                  <span
+                    className={`text-[11px] ${on ? "text-white/60" : "text-[#8a9a8e]"}`}
+                  >
+                    {tasks.filter((t) => t.project === id).length}
+                  </span>
+                </div>
+              );
+            })}
+          </aside>
 
-                    <div className="flex justify-between mt-4 relative">
-                      <div className="flex gap-2">
-                        <ActionBtn
-                          icon={<Calendar size={14} />}
-                          label="Due date"
-                          onClick={() =>
-                            setActivePopup(
-                              activePopup === "calendar" ? null : "calendar",
-                            )
-                          }
+          {/* ═══ MAIN ═══ */}
+          <main className="flex-1 bg-[#f3f5f2] overflow-y-auto px-10 py-8 ps-scroll">
+            {/* header */}
+            <div className="flex justify-between items-start mb-7">
+              <div>
+                <h1 className="font-serif-ps text-[32px] text-[#1c2b20] leading-[1.1] m-0">
+                  {filterLabel}
+                </h1>
+                <p className="flex items-center gap-1.5 text-[#8a9a8e] text-[13px] mt-1.5 mb-0">
+                  <Target size={13} className="text-[#2d5a3d]" />
+                  {todayTasks} tasks today · {completedToday} completed
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <button className="addBtn" onClick={() => setIsAdding(true)}>
+                  <Plus size={15} /> Add task
+                </button>
+                <button
+                  className="flex items-center gap-1.5 px-4 py-2.25 rounded-lg text-[13px] font-medium bg-transparent text-[#4a5e4f] border border-[#2d5a3d]/10 cursor-pointer transition-all hover:bg-[#dde4de] hover:text-[#1c2b20]"
+                  onClick={() => setIsDisplayPanelOpen(!isDisplayPanelOpen)}
+                >
+                  <List size={15} /> Display
+                </button>
+              </div>
+            </div>
+
+            {/* task list */}
+            <div
+              className={`flex flex-col ${viewMode === "board" ? "gap-3" : "gap-0"}`}
+            >
+              {filteredTasks.length === 0 ? (
+                <div className="py-10 text-center text-[#8a9a8e] text-[14px]">
+                  <div className="text-2xl mb-2 text-[#cfd8d1]">◈</div>
+                  {getEmptyMessage()}
+                </div>
+              ) : (
+                filteredTasks.map((task) => {
+                  const pm = PM[task.priority] ?? PM[4];
+                  return (
+                    <div
+                      key={task.id}
+                      className={
+                        viewMode === "board"
+                          ? "bg-white border border-[#2d5a3d]/10 rounded-xl p-4 transition-all hover:-translate-y-0.5 hover:shadow-[0_6px_20px_rgba(28,43,32,0.08)]"
+                          : "flex items-start gap-3 px-2 py-3.5 border-b border-[#2d5a3d]/10 last:border-b-0 rounded-md transition-colors hover:bg-[#2d5a3d]/4"
+                      }
+                    >
+                      <div className="flex items-start gap-3 w-full">
+                        {/* checkbox */}
+                        <button
+                          onClick={() => toggleComplete(task.id)}
+                          className={`w-4.5 h-4.5 rounded-full border-[1.5px] shrink-0 mt-0.5 flex items-center justify-center cursor-pointer transition-all ${
+                            task.completed
+                              ? "bg-[#2d5a3d] border-[#2d5a3d]"
+                              : "border-[#8a9a8e] bg-transparent"
+                          }`}
+                        >
+                          {task.completed && (
+                            <Check size={11} color="#fff" strokeWidth={3} />
+                          )}
+                        </button>
+
+                        {/* content */}
+                        <div className="flex-1 min-w-0">
+                          <div
+                            className={`text-[14px] font-medium leading-[1.4] ${task.completed ? "line-through text-[#8a9a8e]" : "text-[#1c2b20]"}`}
+                          >
+                            {task.task}
+                          </div>
+                          {task.description && (
+                            <div className="text-[12px] text-[#8a9a8e] mt-0.5">
+                              {task.description}
+                            </div>
+                          )}
+                          <div className="flex flex-wrap gap-1.5 mt-2">
+                            {task.dueDate && (
+                              <span
+                                className="chipCls"
+                                style={{
+                                  background: "rgba(45,90,61,0.08)",
+                                  color: "#2d5a3d",
+                                }}
+                              >
+                                <Clock size={10} />{" "}
+                                {formatDueDate(task.dueDate)}
+                              </span>
+                            )}
+                            {task.priority && (
+                              <span
+                                className="chipCls"
+                                style={{ background: pm.chip, color: pm.text }}
+                              >
+                                <span
+                                  className="w-1.75 h-1.75 rounded-full shrink-0 inline-block"
+                                  style={{ background: pm.dot }}
+                                />
+                                {pm.label}
+                              </span>
+                            )}
+                            {task.project && (
+                              <span
+                                className="chipCls"
+                                style={{
+                                  background: "rgba(28,43,32,0.06)",
+                                  color: "#4a5e4f",
+                                }}
+                              >
+                                <Folder size={10} /> {task.project}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* actions */}
+                        <div className="flex gap-1 shrink-0">
+                          <button
+                            onClick={() => handleEditTask(task)}
+                            className="p-1.25 rounded-md border border-[#2d5a3d]/10 bg-transparent cursor-pointer text-[#8a9a8e] transition-all hover:bg-[#dde4de] hover:text-[#1c2b20]"
+                          >
+                            <Pencil size={13} />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteTask(task.id)}
+                            className="p-1.25 rounded-md border border-[#b5451b]/15 bg-transparent cursor-pointer text-[#b5451b] opacity-45 transition-opacity hover:opacity-100"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+
+              {/* ── MODAL ── */}
+              <div className="relative mt-4">
+                {isAdding && (
+                  <>
+                    {/* overlay */}
+                    <div
+                      className="fixed inset-0 bg-[#1c2b20]/40 backdrop-blur-sm z-998"
+                      onClick={() => setIsAdding(false)}
+                    />
+                    {/* modal panel */}
+                    <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[#f3f5f2] border border-[#2d5a3d]/10 rounded-2xl p-6 max-w-120 w-[92%] shadow-[0_20px_60px_rgba(28,43,32,0.15)] z-999">
+                      {/* header */}
+                      <div className="flex justify-between items-center mb-4">
+                        <h3 className="font-serif-ps text-[17px] text-[#1c2b20] m-0">
+                          {editingTaskId ? "Edit Task" : "New Task"}
+                        </h3>
+                        <button
+                          onClick={() => setIsAdding(false)}
+                          className="bg-transparent border-none cursor-pointer text-[#8a9a8e] p-1 hover:text-[#1c2b20] transition-colors"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+
+                      {/* inputs */}
+                      <div className="flex flex-col gap-2.5">
+                        <input
+                          className="inputCls"
+                          type="text"
+                          placeholder="What needs to be done?"
+                          value={taskInput}
+                          onChange={(e) => setTaskInput(e.target.value)}
+                          autoFocus
                         />
-                        <ActionBtn
-                          icon={<Flag size={14} />}
-                          label="Priority"
-                          onClick={() =>
-                            setActivePopup(
-                              activePopup === "priority" ? null : "priority",
-                            )
-                          }
-                        />
-                        <ActionBtn
-                          icon={<Folder size={14} />}
-                          label="Project"
-                          onClick={() =>
-                            setActivePopup(
-                              activePopup === "project" ? null : "project",
-                            )
-                          }
+                        <input
+                          className={`inputCls text-[12px]!`}
+                          type="text"
+                          placeholder="Description (optional)"
+                          value={descInput}
+                          onChange={(e) => setDescInput(e.target.value)}
                         />
                       </div>
 
-                      {/* CALENDAR POPUP */}
-                      {activePopup === "calendar" && (
-                        <div className="absolute bottom-full mb-2 left-0 bg-[#181818] border border-[#333] rounded-xl p-3 w-[240px] z-50 shadow-2xl">
-                          <div className="flex justify-between items-center mb-3 px-1 text-sm font-semibold">
-                            <span>
-                              {currentCalendarDate.toLocaleString("default", {
-                                month: "long",
-                                year: "numeric",
-                              })}
+                      {/* selected tags */}
+                      {(dueDate || priority || project) && (
+                        <div className="flex flex-wrap gap-1.5 mt-2.5">
+                          {dueDate && (
+                            <span
+                              className="chipCls"
+                              style={{
+                                background: "rgba(45,90,61,0.1)",
+                                color: "#2d5a3d",
+                              }}
+                            >
+                              <Calendar size={10} /> {formatDueDate(dueDate)}
                             </span>
-                            <div className="flex gap-2">
-                              <button
-                                onClick={() =>
-                                  setCurrentCalendarDate(
-                                    new Date(
-                                      currentCalendarDate.setMonth(
-                                        currentCalendarDate.getMonth() - 1,
-                                      ),
-                                    ),
-                                  )
-                                }
-                              >
-                                <ChevronLeft size={16} />
-                              </button>
-                              <button
-                                onClick={() =>
-                                  setCurrentCalendarDate(
-                                    new Date(
-                                      currentCalendarDate.setMonth(
-                                        currentCalendarDate.getMonth() + 1,
-                                      ),
-                                    ),
-                                  )
-                                }
-                              >
-                                <ChevronRight size={16} />
-                              </button>
-                            </div>
-                          </div>
-                          <div className="grid grid-cols-7 gap-1 text-[10px] text-center text-neutral-500 mb-1">
-                            <span>M</span>
-                            <span>T</span>
-                            <span>W</span>
-                            <span>T</span>
-                            <span>F</span>
-                            <span>S</span>
-                            <span>S</span>
-                          </div>
-                          <div className="grid grid-cols-7 gap-1">
-                            {renderCalendarDays()}
-                          </div>
-                        </div>
-                      )}
-
-                      {/* PRIORITY POPUP */}
-                      {activePopup === "priority" && (
-                        <div className="absolute bottom-full mb-2 left-[85px] bg-[#181818] border border-[#333] rounded-xl w-[160px] z-50 shadow-2xl overflow-hidden">
-                          {priorities.map((p) => (
-                            <div
-                              key={p.id}
-                              className="p-2.5 text-xs text-[#a3a3a3] hover:bg-[#242424] hover:text-white cursor-pointer flex items-center justify-between"
-                              onClick={() => {
-                                setPriority(p.id);
-                                setActivePopup(null);
+                          )}
+                          {priority && (
+                            <span
+                              className="chipCls"
+                              style={{
+                                background: PM[priority].chip,
+                                color: PM[priority].text,
                               }}
                             >
-                              <div className="flex items-center gap-2">
-                                <Flag size={14} className={p.color} /> {p.label}
-                              </div>
-                              {priority === p.id && (
-                                <Check size={14} className="text-red-500" />
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      {/* PROJECT POPUP */}
-                      {activePopup === "project" && (
-                        <div className="absolute bottom-full mb-2 left-[160px] bg-[#181818] border border-[#333] rounded-xl w-[160px] z-50 shadow-2xl overflow-hidden">
-                          {projects.map((p) => (
-                            <div
-                              key={p.id}
-                              className="p-2.5 text-xs text-[#a3a3a3] hover:bg-[#242424] hover:text-white cursor-pointer flex items-center justify-between"
-                              onClick={() => {
-                                setProject(p.id);
-                                setActivePopup(null);
+                              <Flag size={10} /> P{priority}
+                            </span>
+                          )}
+                          {project && (
+                            <span
+                              className="chipCls"
+                              style={{
+                                background: "rgba(28,43,32,0.06)",
+                                color: "#4a5e4f",
                               }}
                             >
-                              <div className="flex items-center gap-2">
-                                📁 {p.label}
-                              </div>
-                              {project === p.id && (
-                                <Check size={14} className="text-red-500" />
-                              )}
-                            </div>
-                          ))}
+                              <Folder size={10} /> {project}
+                            </span>
+                          )}
                         </div>
                       )}
-                    </div>
 
-                    <div className="flex justify-end gap-3 mt-5">
-                      <button
-                        className="text-[13px] text-[#a3a3a3] hover:text-white"
-                        onClick={closeForm}
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        onClick={handleAddTask}
-                        className="bg-cyan-400 text-black px-4 py-2 rounded-lg text-[13px] font-bold"
-                      >
-                        Add task
-                      </button>
+                      {/* action bar + popups */}
+                      <div className="relative mt-3.5">
+                        <div className="flex gap-1.5">
+                          <button
+                            className="actionChip"
+                            onClick={() =>
+                              setActivePopup(
+                                activePopup === "calendar" ? null : "calendar",
+                              )
+                            }
+                          >
+                            <Calendar size={12} /> Due date
+                          </button>
+                          <button
+                            className="actionChip"
+                            onClick={() =>
+                              setActivePopup(
+                                activePopup === "priority" ? null : "priority",
+                              )
+                            }
+                          >
+                            <Flag size={12} /> Priority
+                          </button>
+                          <button
+                            className="actionChip"
+                            onClick={() =>
+                              setActivePopup(
+                                activePopup === "project" ? null : "project",
+                              )
+                            }
+                          >
+                            <Folder size={12} /> Project
+                          </button>
+                        </div>
+
+                        {/* calendar popup */}
+                        {activePopup === "calendar" && (
+                          <div className={`popupCls left-0 w-60`}>
+                            <div className="flex justify-between items-center mb-2.5">
+                              <span className="text-[12px] font-semibold text-[#1c2b20]">
+                                {currentCalendarDate.toLocaleString("default", {
+                                  month: "long",
+                                  year: "numeric",
+                                })}
+                              </span>
+                              <div className="flex gap-1.5">
+                                {[
+                                  [<ChevronLeft size={13} />, -1],
+                                  [<ChevronRight size={13} />, 1],
+                                ].map(([icon, dir], i) => (
+                                  <button
+                                    key={i}
+                                    onClick={() =>
+                                      setCurrentCalendarDate(
+                                        new Date(
+                                          currentCalendarDate.setMonth(
+                                            currentCalendarDate.getMonth() +
+                                              dir,
+                                          ),
+                                        ),
+                                      )
+                                    }
+                                    className="bg-transparent border-none cursor-pointer text-[#4a5e4f] p-0.5 hover:text-[#1c2b20] transition-colors"
+                                  >
+                                    {icon}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                            <div className="grid grid-cols-7 gap-0.5 mb-1">
+                              {["M", "T", "W", "T", "F", "S", "S"].map(
+                                (d, i) => (
+                                  <div
+                                    key={i}
+                                    className="text-[10px] text-center text-[#8a9a8e] font-semibold"
+                                  >
+                                    {d}
+                                  </div>
+                                ),
+                              )}
+                            </div>
+                            <div className="grid grid-cols-7 gap-0.5">
+                              {renderCalendarDays()}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* priority popup */}
+                        {activePopup === "priority" && (
+                          <div className={`popupCls left-25 w-40`}>
+                            {priorities.map((p) => (
+                              <div
+                                key={p.id}
+                                className="popupRow"
+                                onClick={() => {
+                                  setPriority(p.id);
+                                  setActivePopup(null);
+                                }}
+                              >
+                                <div className="flex items-center gap-2">
+                                  <span
+                                    className="w-1.75 h-1.75 rounded-full shrink-0 inline-block"
+                                    style={{ background: PM[p.id].dot }}
+                                  />
+                                  {p.label}
+                                </div>
+                                {priority === p.id && (
+                                  <Check size={12} className="text-[#2d5a3d]" />
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* project popup */}
+                        {activePopup === "project" && (
+                          <div className={`popupCls left-50 w-37.5`}>
+                            {projects.map((p) => (
+                              <div
+                                key={p.id}
+                                className="popupRow"
+                                onClick={() => {
+                                  setProject(p.id);
+                                  setActivePopup(null);
+                                }}
+                              >
+                                <div className="flex items-center gap-2">
+                                  <Folder size={12} /> {p.label}
+                                </div>
+                                {project === p.id && (
+                                  <Check size={12} className="text-[#2d5a3d]" />
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* footer */}
+                      <div className="flex justify-end gap-2.5 mt-5">
+                        <button
+                          onClick={closeForm}
+                          className="bg-transparent border-none cursor-pointer text-[13px] text-[#8a9a8e] hover:text-[#1c2b20] transition-colors"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          className={`addBtn px-5! py-2!`}
+                          onClick={handleAddTask}
+                        >
+                          {editingTaskId ? "Save Changes" : "Add Task"}
+                        </button>
+                      </div>
                     </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </main>
+
+          {/* ═══ DISPLAY PANEL ═══ */}
+          <aside
+            className={`bg-[#e8ede9] border-l border-[#2d5a3d]/10 shrink-0 flex flex-col gap-5 overflow-hidden transition-all duration-300 ${isDisplayPanelOpen ? "w-[256px] px-4 py-6" : "w-0 p-0"}`}
+          >
+            {isDisplayPanelOpen && (
+              <>
+                <div>
+                  <p className="secLabel">Layout</p>
+                  <div className="flex flex-col gap-1.5">
+                    {[
+                      { mode: "list", icon: <List size={14} />, label: "List" },
+                      {
+                        mode: "board",
+                        icon: <LayoutDashboard size={14} />,
+                        label: "Board",
+                      },
+                    ].map(({ mode, icon, label }) => (
+                      <button
+                        key={mode}
+                        onClick={() => setViewMode(mode)}
+                        className={`flex items-center gap-2 w-full px-3 py-2 rounded-lg text-[13px] font-medium border cursor-pointer transition-all ${
+                          viewMode === mode
+                            ? "border-[#2d5a3d] text-[#2d5a3d] bg-[#2d5a3d]/5"
+                            : "border-[#2d5a3d]/10 text-[#4a5e4f] bg-transparent hover:bg-[#dde4de]"
+                        }`}
+                      >
+                        {icon} {label}
+                      </button>
+                    ))}
                   </div>
-                </>
-              )}
-            </div>
-          </div>
-        </main>
-
-        {/* ===== DISPLAY PANEL ===== */}
-        <aside
-          className={`bg-[#0f0f0f] border-l border-[#1a1a1a] transition-all duration-300 ease-in-out flex flex-col gap-6 overflow-hidden ${isDisplayPanelOpen ? "w-[280px] p-6" : "w-0 p-0"}`}
-        >
-          <div>
-            <label className="block text-[12px] font-semibold text-[#525252] mb-3 uppercase tracking-wider">
-              Layout
-            </label>
-            <div className="flex flex-col gap-2">
-              <LayoutOpt
-                active={viewMode === "list"}
-                onClick={() => setViewMode("list")}
-                icon={<List size={18} />}
-                label="List"
-              />
-              <LayoutOpt
-                active={viewMode === "board"}
-                onClick={() => setViewMode("board")}
-                icon={<LayoutDashboard size={18} />}
-                label="Board"
-              />
-            </div>
-          </div>
-          <div>
-            <label className="block text-[12px] font-semibold text-[#525252] mb-3 uppercase tracking-wider">
-              Sort
-            </label>
-            <select className="w-full bg-[#1a1a1a] border border-[#262626] text-white p-2.5 rounded-lg text-sm outline-none">
-              <option>Smart</option>
-              <option>Due Date</option>
-              <option>Priority</option>
-            </select>
-          </div>
-        </aside>
+                </div>
+                <div>
+                  <p className="secLabel">Sort</p>
+                  <select className="w-full px-3 py-2 rounded-lg text-[13px] bg-[#dde4de] border border-[#2d5a3d]/10 text-[#1c2b20] outline-none font-sans-ps">
+                    <option>Smart</option>
+                    <option>Due Date</option>
+                    <option>Priority</option>
+                  </select>
+                </div>
+              </>
+            )}
+          </aside>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
-
-// --- Internal Tailwind Components ---
-const NavItem = ({ active, icon, label, badge, onClick }) => (
-  <div
-    onClick={onClick}
-    className={`flex items-center gap-3 p-2.5 rounded-lg cursor-pointer transition-all text-sm font-medium ${
-      active
-        ? "bg-[#1a1a1a] text-cyan-400"
-        : "text-[#737373] hover:bg-[#1a1a1a] hover:text-white"
-    }`}
-  >
-    {icon}
-    <span className="flex-1">{label}</span>
-
-    {badge && (
-      <span className="bg-cyan-400 text-black text-[12px] font-bold px-2 py-0.5 rounded-full min-w-[24px] text-center">
-        {badge}
-      </span>
-    )}
-  </div>
-);
-
-const ProjectItem = ({ active, icon, label, count, onClick }) => (
-  <div
-    onClick={onClick}
-    className={`flex items-center mb-1 gap-2.5 p-2.5 rounded-lg cursor-pointer transition-all text-sm font-medium ${
-      active
-        ? "bg-[#1a1a1a] text-cyan-400"
-        : "text-[#737373] hover:bg-[#1a1a1a] hover:text-white"
-    }`}
-  >
-    {icon}
-    <span className="flex-1">{label}</span>
-
-    {count !== undefined && (
-      <span className="text-[13px] text-[#525252]">{count}</span>
-    )}
-  </div>
-);
-
-const ActionBtn = ({ icon, label, onClick }) => (
-  <button
-    onClick={onClick}
-    className="bg-[#242424] border border-transparent text-[#a3a3a3] py-1.5 px-2.5 rounded-lg text-[11px] hover:text-white transition-colors flex items-center gap-1.5"
-  >
-    {icon} {label}
-  </button>
-);
-
-const LayoutOpt = ({ active, onClick, icon, label }) => (
-  <button
-    onClick={onClick}
-    className={`flex items-center gap-3 w-full p-2.5 rounded-xl border transition-all text-sm font-medium ${active ? "border-cyan-400 text-white bg-cyan-400/5" : "border-transparent text-[#737373] hover:bg-[#1a1a1a]"}`}
-  >
-    {icon} {label}
-  </button>
-);

@@ -1,1 +1,28 @@
 @import "tailwindcss";
+
+@layer components {
+  .navBase {
+    @apply flex items-center gap-2.5 px-3 py-2 rounded-lg cursor-pointer text-[13px] font-medium border border-transparent transition-all duration-150;
+  }
+  .addBtn {
+    @apply flex items-center justify-center gap-1.75 px-4.5 py-2.25 rounded-lg text-[13px] font-semibold bg-[#2d5a3d] text-white border-none cursor-pointer transition-all hover:bg-[#224630];
+  }
+  .chipCls {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-medium;
+  }
+  .popupCls {
+    @apply absolute bottom-[calc(100%+8px)] bg-white border border-[#2d5a3d]/10 rounded-xl p-2.5 shadow-[0_12px_36px_rgba(28,43,32,0.12)] z-50;
+  }
+  .popupRow {
+    @apply flex items-center justify-between px-2.25 py-1.75 rounded-[7px] cursor-pointer text-[12px] text-[#4a5e4f] transition-colors hover:bg-[#dde4de] hover:text-[#1c2b20];
+  }
+  .secLabel {
+    @apply text-[10px] font-bold tracking-widest uppercase text-[#8a9a8e] px-1 mb-1.5;
+  }
+  .inputCls {
+    @apply w-full px-3 py-2.25 rounded-lg text-[13.5px] outline-none bg-white border border-[#2d5a3d]/10 text-[#1c2b20] transition-all;
+  }
+  .actionChip {
+    @apply inline-flex items-center gap-1.25 px-2.5 py-1.25 rounded-md text-[11px] font-medium bg-[#dde4de] border border-[#2d5a3d]/10 text-[#4a5e4f] cursor-pointer transition-all hover:bg-[#cfd8d1] hover:text-[#1c2b20];
+  }
+}
