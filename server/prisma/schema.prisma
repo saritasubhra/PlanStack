@@ -12,3 +12,26 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum Project {
+  work
+  personal
+}
+
+model Task {
+  id          BigInt   @id @default(autoincrement())
+  task        String
+  description String?
+  dueDate     DateTime
+  priority    Priority
+  project     Project?
+  completed   Boolean   @default(false)
+  createdAt   DateTime @default(now())
+}
