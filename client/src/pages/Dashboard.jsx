@@ -163,14 +163,15 @@ export default function Dashboard() {
   const [isAdding, setIsAdding] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState(null);
   const [tasks, setTasks] = useState(getStoredTasks);
-  const [taskInput, setTaskInput] = useState("");
-  const [descInput, setDescInput] = useState("");
-  const [dueDate, setDueDate] = useState(null);
-  const [priority, setPriority] = useState(null);
-  const [project, setProject] = useState(null);
   const [activePopup, setActivePopup] = useState(null);
   const [currentCalendarDate, setCurrentCalendarDate] = useState(new Date());
   const [activeFilter, setActiveFilter] = useState("all");
+
+  const [task, setTask] = useState("");
+  const [description, setDescription] = useState("");
+  const [dueDate, setDueDate] = useState(null);
+  const [priority, setPriority] = useState(null);
+  const [project, setProject] = useState(null);
 
   const priorities = [
     { id: 1, label: "Priority 1" },
@@ -217,16 +218,16 @@ export default function Dashboard() {
 
   const closeForm = () => {
     setIsAdding(false);
-    setTaskInput("");
-    setDescInput("");
+    setTask("");
+    setDescription("");
     setDueDate(null);
     setPriority(null);
     setActivePopup(null);
     setProject(null);
   };
   const resetForm = () => {
-    setTaskInput("");
-    setDescInput("");
+    setTask("");
+    setDescription("");
     setDueDate(null);
     setPriority(null);
     setIsAdding(false);
@@ -241,8 +242,8 @@ export default function Dashboard() {
           t.id === editingTaskId
             ? {
                 ...t,
-                task: taskInput,
-                description: descInput,
+                task: task,
+                description: description,
                 dueDate: dueDate ? new Date(dueDate) : null,
                 priority: priority || 4,
                 project,
@@ -253,8 +254,8 @@ export default function Dashboard() {
           ...existing,
           {
             id: Date.now(),
-            task: taskInput,
-            description: descInput,
+            task: task,
+            description: description,
             dueDate: dueDate ? new Date(dueDate) : null,
             priority: priority || 4,
             project,
@@ -319,8 +320,8 @@ export default function Dashboard() {
   };
 
   const handleEditTask = (task) => {
-    setTaskInput(task.task);
-    setDescInput(task.description || "");
+    setTask(task.task);
+    setDescription(task.description || "");
     setDueDate(task.dueDate || null);
     setPriority(task.priority || null);
     setProject(task.project || null);
@@ -626,16 +627,16 @@ export default function Dashboard() {
                           className="inputCls"
                           type="text"
                           placeholder="What needs to be done?"
-                          value={taskInput}
-                          onChange={(e) => setTaskInput(e.target.value)}
+                          value={task}
+                          onChange={(e) => setTask(e.target.value)}
                           autoFocus
                         />
                         <input
                           className={`inputCls text-[12px]!`}
                           type="text"
                           placeholder="Description (optional)"
-                          value={descInput}
-                          onChange={(e) => setDescInput(e.target.value)}
+                          value={description}
+                          onChange={(e) => setDescription(e.target.value)}
                         />
                       </div>
 
