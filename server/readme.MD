@@ -9,3 +9,4 @@
 
 1. Define the schema in the prisma.schema file
 2. Run -> npx prisma migrate dev --name create_task_model to sync the DB with your schema
+3. Make sure @prisma/client is installed with thee 1st migration command
