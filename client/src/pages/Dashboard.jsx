@@ -136,6 +136,14 @@ const PM = {
   },
 };
 
+const initialState = {
+  task: "",
+  description: "",
+  dueDate: null,
+  priority: null,
+  project: null,
+};
+
 export default function Dashboard() {
   /* ── helpers (unchanged) ── */
   const isSameCalendarDay = (d1, d2) => {
@@ -167,11 +175,13 @@ export default function Dashboard() {
   const [currentCalendarDate, setCurrentCalendarDate] = useState(new Date());
   const [activeFilter, setActiveFilter] = useState("all");
 
-  const [task, setTask] = useState("");
-  const [description, setDescription] = useState("");
-  const [dueDate, setDueDate] = useState(null);
-  const [priority, setPriority] = useState(null);
-  const [project, setProject] = useState(null);
+  const [formData, setFormData] = useState(initialState);
+
+  function handleFormData(e) {
+    setFormData((prev) => {
+      return { ...prev, [e.target.name]: e.target.value };
+    });
+  }
 
   const priorities = [
     { id: 1, label: "Priority 1" },
@@ -218,35 +228,29 @@ export default function Dashboard() {
 
   const closeForm = () => {
     setIsAdding(false);
-    setTask("");
-    setDescription("");
-    setDueDate(null);
-    setPriority(null);
+    setFormData(initialState);
     setActivePopup(null);
-    setProject(null);
   };
+
   const resetForm = () => {
-    setTask("");
-    setDescription("");
-    setDueDate(null);
-    setPriority(null);
+    setFormData(initialState);
     setIsAdding(false);
     setActivePopup(null);
-    setProject(null);
   };
 
   const handleAddTask = () => {
     const existing = getStoredTasks();
+
     const updated = editingTaskId
       ? existing.map((t) =>
           t.id === editingTaskId
             ? {
                 ...t,
-                task: task,
-                description: description,
-                dueDate: dueDate ? new Date(dueDate) : null,
-                priority: priority || 4,
-                project,
+                task: formData.task,
+                description: formData.description,
+                dueDate: formData.dueDate ? new Date(formData.dueDate) : null,
+                priority: formData.priority || 4,
+                project: formData.project,
               }
             : t,
         )
@@ -254,18 +258,21 @@ export default function Dashboard() {
           ...existing,
           {
             id: Date.now(),
-            task: task,
-            description: description,
-            dueDate: dueDate ? new Date(dueDate) : null,
-            priority: priority || 4,
-            project,
+            task: formData.task,
+            description: formData.description,
+            dueDate: formData.dueDate ? new Date(formData.dueDate) : null,
+            priority: formData.priority || 4,
+            project: formData.project,
             completed: false,
           },
         ];
+
     saveTasksToStorage(updated);
     setTasks(updated);
     setEditingTaskId(null);
-    resetForm();
+    setFormData(initialState);
+    setIsAdding(false);
+    setActivePopup(null);
   };
 
   const toggleComplete = (id) => {
@@ -300,7 +307,10 @@ export default function Dashboard() {
           key={d}
           onClick={() => {
             if (isPast) return;
-            setDueDate(new Date(year, month, d));
+            setFormData((prev) => ({
+              ...prev,
+              dueDate: new Date(year, month, d),
+            }));
             setActivePopup(null);
           }}
           className={[
@@ -320,11 +330,14 @@ export default function Dashboard() {
   };
 
   const handleEditTask = (task) => {
-    setTask(task.task);
-    setDescription(task.description || "");
-    setDueDate(task.dueDate || null);
-    setPriority(task.priority || null);
-    setProject(task.project || null);
+    setFormData({
+      task: task.task,
+      description: task.description || "",
+      dueDate: task.dueDate || null,
+      priority: task.priority || null,
+      project: task.project || null,
+    });
+
     setEditingTaskId(task.id);
     setIsAdding(true);
   };
@@ -627,23 +640,27 @@ export default function Dashboard() {
                           className="inputCls"
                           type="text"
                           placeholder="What needs to be done?"
-                          value={task}
-                          onChange={(e) => setTask(e.target.value)}
+                          name="task"
+                          value={formData.task}
+                          onChange={handleFormData}
                           autoFocus
                         />
                         <input
                           className={`inputCls text-[12px]!`}
                           type="text"
                           placeholder="Description (optional)"
-                          value={description}
-                          onChange={(e) => setDescription(e.target.value)}
+                          name="description"
+                          value={formData.description}
+                          onChange={handleFormData}
                         />
                       </div>
 
                       {/* selected tags */}
-                      {(dueDate || priority || project) && (
+                      {(formData.dueDate ||
+                        formData.priority ||
+                        formData.project) && (
                         <div className="flex flex-wrap gap-1.5 mt-2.5">
-                          {dueDate && (
+                          {formData.dueDate && (
                             <span
                               className="chipCls"
                               style={{
@@ -651,21 +668,22 @@ export default function Dashboard() {
                                 color: "#2d5a3d",
                               }}
                             >
-                              <Calendar size={10} /> {formatDueDate(dueDate)}
+                              <Calendar size={10} />{" "}
+                              {formatDueDate(formData.dueDate)}
                             </span>
                           )}
-                          {priority && (
+                          {formData.priority && (
                             <span
                               className="chipCls"
                               style={{
-                                background: PM[priority].chip,
-                                color: PM[priority].text,
+                                background: PM[formData.priority].chip,
+                                color: PM[formData.priority].text,
                               }}
                             >
-                              <Flag size={10} /> P{priority}
+                              <Flag size={10} /> P{formData.priority}
                             </span>
                           )}
-                          {project && (
+                          {formData.project && (
                             <span
                               className="chipCls"
                               style={{
@@ -673,7 +691,7 @@ export default function Dashboard() {
                                 color: "#4a5e4f",
                               }}
                             >
-                              <Folder size={10} /> {project}
+                              <Folder size={10} /> {formData.project}
                             </span>
                           )}
                         </div>
@@ -774,7 +792,10 @@ export default function Dashboard() {
                                 key={p.id}
                                 className="popupRow"
                                 onClick={() => {
-                                  setPriority(p.id);
+                                  setFormData((prev) => ({
+                                    ...prev,
+                                    priority: p.id,
+                                  }));
                                   setActivePopup(null);
                                 }}
                               >
@@ -785,7 +806,7 @@ export default function Dashboard() {
                                   />
                                   {p.label}
                                 </div>
-                                {priority === p.id && (
+                                {formData.priority === p.id && (
                                   <Check size={12} className="text-[#2d5a3d]" />
                                 )}
                               </div>
@@ -801,14 +822,17 @@ export default function Dashboard() {
                                 key={p.id}
                                 className="popupRow"
                                 onClick={() => {
-                                  setProject(p.id);
+                                  setFormData((prev) => ({
+                                    ...prev,
+                                    project: p.id,
+                                  }));
                                   setActivePopup(null);
                                 }}
                               >
                                 <div className="flex items-center gap-2">
                                   <Folder size={12} /> {p.label}
                                 </div>
-                                {project === p.id && (
+                                {formData.project === p.id && (
                                   <Check size={12} className="text-[#2d5a3d]" />
                                 )}
                               </div>
