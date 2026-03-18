@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Calendar,
   Clock,
@@ -17,118 +17,34 @@ import {
   Trash2,
   AlertCircle,
 } from "lucide-react";
-
-/* ── demo data (unchanged) ── */
-const demoTasks = [
-  {
-    id: 1,
-    task: "Review design mockups",
-    description: "Check the Figma file",
-    dueDate: new Date(2026, 1, 2, 20, 17, 20),
-    priority: 1,
-    completed: false,
-    project: "personal",
-  },
-  {
-    id: 2,
-    task: "Team standup",
-    description: "",
-    dueDate: new Date(),
-    priority: 4,
-    completed: true,
-    project: "work",
-  },
-  {
-    id: 3,
-    task: "Update documentation",
-    description: "Add API endpoints",
-    dueDate: new Date(2026, 1, 5, 20, 17, 20),
-    priority: 2,
-    completed: false,
-    project: "personal",
-  },
-  {
-    id: 4,
-    task: "Implement authentication",
-    description: "Add JWT-based login and signup flow",
-    dueDate: new Date(),
-    priority: 2,
-    completed: false,
-    project: "work",
-  },
-  {
-    id: 5,
-    task: "Fix dashboard bugs",
-    description: "Resolve UI issues reported by QA",
-    dueDate: new Date(2026, 1, 7, 20, 17, 20),
-    priority: 3,
-    completed: false,
-    project: "work",
-  },
-  {
-    id: 6,
-    task: "Deploy backend service",
-    description: "Deploy Node.js API on Render",
-    dueDate: new Date(),
-    priority: 1,
-    completed: false,
-    project: "work",
-  },
-];
+import axiosInstance from "../lib/axios";
 
 const projects = [
   { id: "work", label: "Work" },
   { id: "personal", label: "Personal" },
 ];
-const STORAGE_KEY = "planstack_tasks";
-
-const getStoredTasks = () => {
-  try {
-    const data = localStorage.getItem(STORAGE_KEY);
-    if (!data) return [];
-    return JSON.parse(data).map((t) => ({
-      ...t,
-      dueDate: t.dueDate ? new Date(t.dueDate) : null,
-    }));
-  } catch (e) {
-    console.error("Storage read error", e);
-    return [];
-  }
-};
-
-const saveTasksToStorage = (tasks) => {
-  localStorage.setItem(
-    STORAGE_KEY,
-    JSON.stringify(
-      tasks.map((t) => ({
-        ...t,
-        dueDate: t.dueDate ? new Date(t.dueDate).toISOString() : null,
-      })),
-    ),
-  );
-};
 
 /* ── priority metadata (unchanged) ── */
 const PM = {
-  1: {
+  URGENT: {
     label: "Urgent",
     dot: "#b5451b",
     chip: "rgba(181,69,27,0.1)",
     text: "#b5451b",
   },
-  2: {
+  HIGH: {
     label: "High",
     dot: "#a07c1e",
     chip: "rgba(160,124,30,0.1)",
     text: "#a07c1e",
   },
-  3: {
+  MEDIUM: {
     label: "Medium",
     dot: "#2e6b8a",
     chip: "rgba(46,107,138,0.1)",
     text: "#2e6b8a",
   },
-  4: {
+  LOW: {
     label: "Low",
     dot: "#8a9a8e",
     chip: "rgba(138,154,142,0.1)",
@@ -170,12 +86,32 @@ export default function Dashboard() {
   const [viewMode, setViewMode] = useState("list");
   const [isAdding, setIsAdding] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState(null);
-  const [tasks, setTasks] = useState(getStoredTasks);
+  const [tasks, setTasks] = useState([]);
   const [activePopup, setActivePopup] = useState(null);
   const [currentCalendarDate, setCurrentCalendarDate] = useState(new Date());
   const [activeFilter, setActiveFilter] = useState("all");
 
   const [formData, setFormData] = useState(initialState);
+
+  useEffect(() => {
+    fetchTasks();
+  }, []);
+
+  const fetchTasks = async () => {
+    try {
+      const res = await axiosInstance.get("/tasks");
+
+      // convert date string → Date object
+      const formatted = res.data.map((t) => ({
+        ...t,
+        dueDate: t.dueDate ? new Date(t.dueDate) : null,
+      }));
+
+      setTasks(formatted);
+    } catch (err) {
+      console.error("Error fetching tasks:", err);
+    }
+  };
 
   function handleFormData(e) {
     setFormData((prev) => {
@@ -184,10 +120,10 @@ export default function Dashboard() {
   }
 
   const priorities = [
-    { id: 1, label: "Priority 1" },
-    { id: 2, label: "Priority 2" },
-    { id: 3, label: "Priority 3" },
-    { id: 4, label: "Priority 4" },
+    { id: "URGENT", label: "Urgent" },
+    { id: "HIGH", label: "High" },
+    { id: "MEDIUM", label: "Medium" },
+    { id: "LOW", label: "Low" },
   ];
 
   /* ── derived (unchanged) ── */
@@ -232,56 +168,48 @@ export default function Dashboard() {
     setActivePopup(null);
   };
 
-  const resetForm = () => {
-    setFormData(initialState);
-    setIsAdding(false);
-    setActivePopup(null);
+  const handleAddTask = async () => {
+    try {
+      if (editingTaskId) {
+        await axiosInstance.patch(`/tasks/${editingTaskId}`, {
+          ...formData,
+          dueDate: formData.dueDate
+            ? new Date(formData.dueDate).toISOString()
+            : null,
+        });
+      } else {
+        await axiosInstance.post("/tasks", {
+          ...formData,
+          dueDate: formData.dueDate
+            ? new Date(formData.dueDate).toISOString()
+            : null,
+          completed: false,
+        });
+      }
+
+      await fetchTasks(); // refresh UI
+
+      setEditingTaskId(null);
+      setFormData(initialState);
+      setIsAdding(false);
+      setActivePopup(null);
+    } catch (err) {
+      console.error("Error saving task:", err);
+    }
   };
 
-  const handleAddTask = () => {
-    const existing = getStoredTasks();
+  const toggleComplete = async (id) => {
+    try {
+      const task = tasks.find((t) => t.id === id);
 
-    const updated = editingTaskId
-      ? existing.map((t) =>
-          t.id === editingTaskId
-            ? {
-                ...t,
-                task: formData.task,
-                description: formData.description,
-                dueDate: formData.dueDate ? new Date(formData.dueDate) : null,
-                priority: formData.priority || 4,
-                project: formData.project,
-              }
-            : t,
-        )
-      : [
-          ...existing,
-          {
-            id: Date.now(),
-            task: formData.task,
-            description: formData.description,
-            dueDate: formData.dueDate ? new Date(formData.dueDate) : null,
-            priority: formData.priority || 4,
-            project: formData.project,
-            completed: false,
-          },
-        ];
+      await axiosInstance.patch(`/tasks/${id}`, {
+        completed: !task.completed,
+      });
 
-    saveTasksToStorage(updated);
-    setTasks(updated);
-    setEditingTaskId(null);
-    setFormData(initialState);
-    setIsAdding(false);
-    setActivePopup(null);
-  };
-
-  const toggleComplete = (id) => {
-    const existing = getStoredTasks();
-    const updated = existing.map((t) =>
-      t.id === id ? { ...t, completed: !t.completed } : t,
-    );
-    saveTasksToStorage(updated);
-    setTasks(updated);
+      await fetchTasks();
+    } catch (err) {
+      console.error("Error toggling task:", err);
+    }
   };
 
   const renderCalendarDays = () => {
@@ -341,11 +269,13 @@ export default function Dashboard() {
     setEditingTaskId(task.id);
     setIsAdding(true);
   };
-  const handleDeleteTask = (id) => {
-    const existing = getStoredTasks(),
-      updated = existing.filter((t) => t.id !== id);
-    saveTasksToStorage(updated);
-    setTasks(updated);
+  const handleDeleteTask = async (id) => {
+    try {
+      await axiosInstance.delete(`/tasks/${id}`);
+      await fetchTasks();
+    } catch (err) {
+      console.error("Error deleting task:", err);
+    }
   };
 
   const filterLabel =
